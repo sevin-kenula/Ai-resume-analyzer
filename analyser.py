@@ -27,7 +27,7 @@ def analyze_resume(text):
         }
 
     client = genai.Client(api_key=api_key)
-
+##author --sevinx---
     prompt = f"""
 You are an expert resume analysis system.
 
