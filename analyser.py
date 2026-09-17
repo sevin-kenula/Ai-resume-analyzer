@@ -1,8 +1,32 @@
 import json
-import ollama
+import os
+from google import genai
 
 
 def analyze_resume(text):
+
+    api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        return {
+            "name": "Not found",
+            "email": "Not found",
+            "phone": "Not found",
+            "industry": "Not found",
+            "technical_skills": [],
+            "soft_skills": [],
+            "tools_and_technologies": [],
+            "education": [],
+            "work_experience": [],
+            "certifications": [],
+            "suggested_job_titles": [],
+            "resume_score": 0,
+            "suggestions": [
+                "GEMINI_API_KEY is not configured."
+            ]
+        }
+
+    client = genai.Client(api_key=api_key)
 
     prompt = f"""
 You are an expert resume analysis system.
@@ -50,16 +74,20 @@ IMPORTANT RULES:
 9. education must be a JSON array.
 10. work_experience must be a JSON array.
 11. certifications must be a JSON array.
-12. suggestions must be a JSON array.
-13. Identify the industry from the actual resume content.
-14. Include relevant skills regardless of the candidate's industry.
-15. Do not classify every skill as a technical skill.
+12. suggested_job_titles must be a JSON array.
+13. suggestions must be a JSON array.
+14. Identify the industry from the actual resume content.
+15. Include relevant skills regardless of the candidate's industry.
 16. Do not duplicate the same skill unnecessarily.
-17. Suggestions should be practical and based on weaknesses found in the resume.
-18. 18. suggested_job_titles must be a JSON array containing 3 to 5 realistic job titles based only on the resume.
-19. Do NOT use Markdown.
-20. Do NOT use ```json.
-21. Do NOT add explanations before or after the JSON.
+17. Do not classify every skill as a technical skill.
+18. suggested_job_titles should contain 3 to 5 realistic job titles
+    based only on the candidate's resume.
+19. Suggestions should be practical and based on weaknesses
+    found in the resume.
+20. Return ONLY JSON.
+21. Do NOT use Markdown.
+22. Do NOT use ```json.
+23. Do NOT add explanations before or after the JSON.
 
 RESUME:
 {text}
@@ -67,27 +95,21 @@ RESUME:
 
     try:
 
-        response = ollama.chat(
-            model="llama3.2",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            format="json"
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json"
+            }
         )
 
-        ai_result = response["message"]["content"].strip()
+        ai_result = response.text.strip()
 
-        # Try normal JSON parsing first
         try:
-
             result = json.loads(ai_result)
 
         except json.JSONDecodeError:
 
-            # Try extracting JSON object
             start = ai_result.find("{")
             end = ai_result.rfind("}")
 
@@ -96,89 +118,45 @@ RESUME:
                     "AI did not return a valid JSON object."
                 )
 
-            json_text = ai_result[start:end + 1]
-
-            result = json.loads(json_text)
-
-
-        # -------------------------------------------------
-        # Required fields
-        # -------------------------------------------------
+            result = json.loads(
+                ai_result[start:end + 1]
+            )
 
         result = {
-
-            "name": result.get(
-                "name",
-                "Not found"
-            ),
-
-            "email": result.get(
-                "email",
-                "Not found"
-            ),
-
-            "phone": result.get(
-                "phone",
-                "Not found"
-            ),
-
-            "industry": result.get(
-                "industry",
-                "Not found"
-            ),
-
+            "name": result.get("name", "Not found"),
+            "email": result.get("email", "Not found"),
+            "phone": result.get("phone", "Not found"),
+            "industry": result.get("industry", "Not found"),
             "technical_skills": result.get(
-                "technical_skills",
-                []
+                "technical_skills", []
             ),
-
             "soft_skills": result.get(
-                "soft_skills",
-                []
+                "soft_skills", []
             ),
-
             "tools_and_technologies": result.get(
-                "tools_and_technologies",
-                []
+                "tools_and_technologies", []
             ),
-
             "education": result.get(
-                "education",
-                []
+                "education", []
             ),
-
             "work_experience": result.get(
-                "work_experience",
-                []
+                "work_experience", []
             ),
-
             "certifications": result.get(
-                "certifications",
-                []
+                "certifications", []
             ),
             "suggested_job_titles": result.get(
-                "suggested_job_titles", 
-                []   
+                "suggested_job_titles", []
             ),
-
             "resume_score": result.get(
-                "resume_score",
-                0
+                "resume_score", 0
             ),
-
             "suggestions": result.get(
-                "suggestions",
-                []
+                "suggestions", []
             )
         }
 
-
-        # -------------------------------------------------
-        # Make sure list fields are actually lists
-        # -------------------------------------------------
-
         list_fields = [
-
             "technical_skills",
             "soft_skills",
             "tools_and_technologies",
@@ -187,42 +165,25 @@ RESUME:
             "certifications",
             "suggested_job_titles",
             "suggestions"
-        
-
         ]
-
 
         for field in list_fields:
 
-            if not isinstance(
-                result[field],
-                list
-            ):
+            if not isinstance(result[field], list):
 
                 if result[field]:
-
                     result[field] = [
                         str(result[field])
                     ]
-
                 else:
-
                     result[field] = []
 
-
-        # -------------------------------------------------
-        # Clean empty values
-        # -------------------------------------------------
-
         text_fields = [
-
             "name",
             "email",
             "phone",
             "industry"
-
         ]
-
 
         for field in text_fields:
 
@@ -230,65 +191,39 @@ RESUME:
                 result[field] is None
                 or str(result[field]).strip() == ""
             ):
-
                 result[field] = "Not found"
 
-
-        # -------------------------------------------------
-        # Normalize resume score
-        # -------------------------------------------------
-
         try:
-
             score = int(
-                float(
-                    result["resume_score"]
-                )
+                float(result["resume_score"])
             )
-
         except:
-
             score = 0
-
 
         score = min(
             max(score, 0),
             100
         )
 
-
         result["resume_score"] = score
 
-
         return result
-
 
     except Exception as e:
 
         return {
-
             "name": "Not found",
-
             "email": "Not found",
-
             "phone": "Not found",
-
             "industry": "Not found",
-
             "technical_skills": [],
-
             "soft_skills": [],
-
             "tools_and_technologies": [],
-
             "education": [],
-
             "work_experience": [],
-
             "certifications": [],
-
+            "suggested_job_titles": [],
             "resume_score": 0,
-
             "suggestions": [
                 f"Resume analysis failed: {str(e)}"
             ]
