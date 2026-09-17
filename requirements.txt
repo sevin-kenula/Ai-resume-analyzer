@@ -1,4 +1,4 @@
 streamlit
 pymupdf
 ollama
-fdpf2
+fdpdf2
