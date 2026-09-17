@@ -2,6 +2,7 @@ import streamlit as st
 import ollama
 import json
 from fpdf import FPDF
+import urllib.parse
 
 from resume_parser import extract_text_from_pdf
 from analyser import analyze_resume
@@ -867,7 +868,106 @@ if uploaded_file is not None:
             "No suggestions available"
         )
 
+# =====================================================
+# LINKEDIN JOB FINDER
+# =====================================================
 
+st.header("🎯 Find Jobs For Me")
+
+st.write(
+    "Find LinkedIn job searches based on the skills and job roles "
+    "identified from your resume."
+)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    preferred_location = st.text_input(
+        "📍 Preferred Location",
+        value="Sri Lanka"
+    )
+
+with col2:
+    job_type = st.selectbox(
+        "💼 Job Type",
+        [
+            "Any",
+            "Full-time",
+            "Part-time",
+            "Contract",
+            "Internship",
+            "Temporary"
+        ]
+    )
+
+remote_only = st.checkbox("🌐 Remote Jobs Only")
+
+
+if st.button(
+    "🔎 Find Matching LinkedIn Jobs",
+    use_container_width=True
+):
+
+    job_titles = result.get(
+        "suggested_job_titles",
+        []
+    )
+
+    if not job_titles:
+
+        st.warning(
+            "No suitable job titles were identified from the resume."
+        )
+
+    else:
+
+        st.subheader("💼 Recommended Job Searches")
+
+        for job_title in job_titles:
+
+            params = {
+                "keywords": job_title,
+                "location": preferred_location
+            }
+
+            if job_type != "Any":
+
+                job_type_map = {
+                    "Full-time": "F",
+                    "Part-time": "P",
+                    "Contract": "C",
+                    "Temporary": "T",
+                    "Internship": "I"
+                }
+
+                params["f_JT"] = job_type_map.get(
+                    job_type,
+                    ""
+                )
+
+            if remote_only:
+                params["f_WT"] = "2"
+
+            query_string = urllib.parse.urlencode(
+                params
+            )
+
+            linkedin_url = (
+                "https://www.linkedin.com/jobs/search/?"
+                + query_string
+            )
+
+            st.markdown(
+                f"""
+                ### 🔹 {job_title}
+
+                [🔎 Search {job_title} jobs on LinkedIn]({linkedin_url})
+                """
+            )
+
+        st.success(
+            f"Generated {len(job_titles)} personalized LinkedIn job searches."
+        )
     # =====================================================
     # JOB DESCRIPTION MATCHER
     # =====================================================

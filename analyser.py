@@ -32,6 +32,7 @@ Use exactly these fields:
     "education": [],
     "work_experience": [],
     "certifications": [],
+    "suggested_job_titles": [],
     "resume_score": 0,
     "suggestions": []
 }}
@@ -55,7 +56,7 @@ IMPORTANT RULES:
 15. Do not classify every skill as a technical skill.
 16. Do not duplicate the same skill unnecessarily.
 17. Suggestions should be practical and based on weaknesses found in the resume.
-18. Return ONLY JSON.
+18. 18. suggested_job_titles must be a JSON array containing 3 to 5 realistic job titles based only on the resume.
 19. Do NOT use Markdown.
 20. Do NOT use ```json.
 21. Do NOT add explanations before or after the JSON.
@@ -155,6 +156,10 @@ RESUME:
                 "certifications",
                 []
             ),
+            "suggested_job_titles": result.get(
+                "suggested_job_titles", 
+                []   
+            ),
 
             "resume_score": result.get(
                 "resume_score",
@@ -180,7 +185,9 @@ RESUME:
             "education",
             "work_experience",
             "certifications",
+            "suggested_job_titles",
             "suggestions"
+        
 
         ]
 
