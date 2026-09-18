@@ -1,15 +1,26 @@
 import json
 import os
+import streamlit as st
 from google import genai
 
 
 def analyze_resume(text):
 
-   api_key = st.secrets.get("GEMINI_API_KEY")
-   if not api_key:
-       api_key = os.getenv("GEMINI_API_KEY")
+    # =====================================================
+    # GET GEMINI API KEY
+    # =====================================================
 
-    elif not api_key:
+    api_key = None
+
+    try:
+        api_key = st.secrets.get("GEMINI_API_KEY")
+    except Exception:
+        api_key = None
+
+    if not api_key:
+        api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
         return {
             "name": "Not found",
             "email": "Not found",
@@ -28,8 +39,18 @@ def analyze_resume(text):
             ]
         }
 
-    client = genai.Client(api_key=api_key)
-##author --sevinx---
+    # =====================================================
+    # GEMINI CLIENT
+    # =====================================================
+
+    client = genai.Client(
+        api_key=api_key
+    )
+
+    # =====================================================
+    # AI PROMPT
+    # =====================================================
+
     prompt = f"""
 You are an expert resume analysis system.
 
@@ -95,6 +116,10 @@ RESUME:
 {text}
 """
 
+    # =====================================================
+    # GEMINI ANALYSIS
+    # =====================================================
+
     try:
 
         response = client.models.generate_content(
@@ -107,8 +132,15 @@ RESUME:
 
         ai_result = response.text.strip()
 
+        # =================================================
+        # PARSE JSON
+        # =================================================
+
         try:
-            result = json.loads(ai_result)
+
+            result = json.loads(
+                ai_result
+            )
 
         except json.JSONDecodeError:
 
@@ -116,6 +148,7 @@ RESUME:
             end = ai_result.rfind("}")
 
             if start == -1 or end == -1:
+
                 raise ValueError(
                     "AI did not return a valid JSON object."
                 )
@@ -124,39 +157,80 @@ RESUME:
                 ai_result[start:end + 1]
             )
 
+        # =================================================
+        # STANDARDIZE RESULT
+        # =================================================
+
         result = {
-            "name": result.get("name", "Not found"),
-            "email": result.get("email", "Not found"),
-            "phone": result.get("phone", "Not found"),
-            "industry": result.get("industry", "Not found"),
+            "name": result.get(
+                "name",
+                "Not found"
+            ),
+
+            "email": result.get(
+                "email",
+                "Not found"
+            ),
+
+            "phone": result.get(
+                "phone",
+                "Not found"
+            ),
+
+            "industry": result.get(
+                "industry",
+                "Not found"
+            ),
+
             "technical_skills": result.get(
-                "technical_skills", []
+                "technical_skills",
+                []
             ),
+
             "soft_skills": result.get(
-                "soft_skills", []
+                "soft_skills",
+                []
             ),
+
             "tools_and_technologies": result.get(
-                "tools_and_technologies", []
+                "tools_and_technologies",
+                []
             ),
+
             "education": result.get(
-                "education", []
+                "education",
+                []
             ),
+
             "work_experience": result.get(
-                "work_experience", []
+                "work_experience",
+                []
             ),
+
             "certifications": result.get(
-                "certifications", []
+                "certifications",
+                []
             ),
+
             "suggested_job_titles": result.get(
-                "suggested_job_titles", []
+                "suggested_job_titles",
+                []
             ),
+
             "resume_score": result.get(
-                "resume_score", 0
+                "resume_score",
+                0
             ),
+
             "suggestions": result.get(
-                "suggestions", []
+                "suggestions",
+                []
             )
         }
+
+        # =================================================
+        # MAKE SURE LIST FIELDS ARE LISTS
+        # =================================================
 
         list_fields = [
             "technical_skills",
@@ -171,14 +245,24 @@ RESUME:
 
         for field in list_fields:
 
-            if not isinstance(result[field], list):
+            if not isinstance(
+                result[field],
+                list
+            ):
 
                 if result[field]:
+
                     result[field] = [
                         str(result[field])
                     ]
+
                 else:
+
                     result[field] = []
+
+        # =================================================
+        # MAKE SURE TEXT FIELDS HAVE VALUES
+        # =================================================
 
         text_fields = [
             "name",
@@ -193,13 +277,23 @@ RESUME:
                 result[field] is None
                 or str(result[field]).strip() == ""
             ):
+
                 result[field] = "Not found"
 
+        # =================================================
+        # VALIDATE RESUME SCORE
+        # =================================================
+
         try:
+
             score = int(
-                float(result["resume_score"])
+                float(
+                    result["resume_score"]
+                )
             )
-        except:
+
+        except Exception:
+
             score = 0
 
         score = min(
@@ -209,7 +303,15 @@ RESUME:
 
         result["resume_score"] = score
 
+        # =================================================
+        # RETURN FINAL RESULT
+        # =================================================
+
         return result
+
+    # =====================================================
+    # ERROR HANDLING
+    # =====================================================
 
     except Exception as e:
 
@@ -230,5 +332,3 @@ RESUME:
                 f"Resume analysis failed: {str(e)}"
             ]
         }
-
-        dfvjfdidfjvdi
