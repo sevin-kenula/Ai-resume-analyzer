@@ -211,4 +211,3 @@ Future improvements may include:
 ## 👨‍💻 Author
 
 **Sevin Kenula**
-AI with Computer Science Student
