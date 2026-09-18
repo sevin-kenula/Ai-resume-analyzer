@@ -1,5 +1,6 @@
 import json
 import os
+
 import streamlit as st
 from google import genai
 
@@ -39,19 +40,21 @@ def analyze_resume(text):
             ]
         }
 
-    # =====================================================
-    # GEMINI CLIENT
-    # =====================================================
+    try:
 
-    client = genai.Client(
-        api_key=api_key
-    )
+        # =================================================
+        # CREATE GEMINI CLIENT
+        # =================================================
 
-    # =====================================================
-    # AI PROMPT
-    # =====================================================
+        client = genai.Client(
+            api_key=api_key
+        )
 
-    prompt = f"""
+        # =================================================
+        # AI PROMPT
+        # =================================================
+
+        prompt = f"""
 You are an expert resume analysis system.
 
 Analyze the resume below and return ONLY a valid JSON object.
@@ -116,11 +119,9 @@ RESUME:
 {text}
 """
 
-    # =====================================================
-    # GEMINI ANALYSIS
-    # =====================================================
-
-    try:
+        # =================================================
+        # GEMINI AI REQUEST
+        # =================================================
 
         response = client.models.generate_content(
             model="gemini-3.6-flash",
@@ -130,7 +131,23 @@ RESUME:
             }
         )
 
-        ai_result = response.text.strip()
+        # =================================================
+        # GET AI RESPONSE
+        # =================================================
+
+        if response is None:
+            raise ValueError(
+                "Gemini returned no response."
+            )
+
+        ai_result = response.text
+
+        if not ai_result:
+            raise ValueError(
+                "Gemini returned an empty response."
+            )
+
+        ai_result = ai_result.strip()
 
         # =================================================
         # PARSE JSON
@@ -148,9 +165,8 @@ RESUME:
             end = ai_result.rfind("}")
 
             if start == -1 or end == -1:
-
                 raise ValueError(
-                    "AI did not return a valid JSON object."
+                    "Gemini did not return valid JSON."
                 )
 
             result = json.loads(
@@ -229,7 +245,7 @@ RESUME:
         }
 
         # =================================================
-        # MAKE SURE LIST FIELDS ARE LISTS
+        # VALIDATE LIST FIELDS
         # =================================================
 
         list_fields = [
@@ -261,7 +277,7 @@ RESUME:
                     result[field] = []
 
         # =================================================
-        # MAKE SURE TEXT FIELDS HAVE VALUES
+        # VALIDATE TEXT FIELDS
         # =================================================
 
         text_fields = [
@@ -281,7 +297,7 @@ RESUME:
                 result[field] = "Not found"
 
         # =================================================
-        # VALIDATE RESUME SCORE
+        # VALIDATE SCORE
         # =================================================
 
         try:
@@ -304,7 +320,7 @@ RESUME:
         result["resume_score"] = score
 
         # =================================================
-        # RETURN FINAL RESULT
+        # RETURN RESULT
         # =================================================
 
         return result
@@ -329,6 +345,7 @@ RESUME:
             "suggested_job_titles": [],
             "resume_score": 0,
             "suggestions": [
-                f"Resume analysis failed: {str(e)}"
+                "Resume analysis failed.",
+                f"Error: {str(e)}"
             ]
         }
