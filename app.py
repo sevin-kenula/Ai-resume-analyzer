@@ -1,8 +1,10 @@
 import streamlit as st
-import ollama
+import os
+
 import json
 from fpdf import FPDF
 import urllib.parse
+from google import genai
 
 from resume_parser import extract_text_from_pdf
 from analyser import analyze_resume
@@ -1031,24 +1033,17 @@ JOB DESCRIPTION:
 
                 try:
 
-                    response = ollama.chat(
-                        model="llama3.2",
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": match_prompt
-                            }
-                        ],
-                        format="json"
+                    response = genai.Client(
+                        api_key=os.getenv("GEMINI_API_KEY")
+                    ).models.generate_content(
+                        model="gemini-3.6-flash",
+                        contents=match_prompt,
+                        config={
+                            "response_mime_type": "application/json"
+                        }
                     )
 
-
-                    match_result = response[
-                        "message"
-                    ][
-                        "content"
-                    ]
-
+                    match_result = response.text.strip()
 
                     match_data = json.loads(
                         match_result
