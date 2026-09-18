@@ -5,6 +5,9 @@ from google import genai
 
 def analyze_resume(text):
 
+   api_key = st.secrets.get("GEMINI_API_KEY")
+
+if not api_key:
     api_key = os.getenv("GEMINI_API_KEY")
 
     if not api_key:
